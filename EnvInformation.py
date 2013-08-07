@@ -58,7 +58,8 @@ def getSourceControlInfo():
 
 def getBuildInviroment():
     env_info = dict()
-    env_info["compiler"] = commands.getstatusoutput('clang -v 2>&1 | head -n 1')[1]
+    env_info["clang"] = commands.getstatusoutput('clang -v 2>&1 | head -n 1')[1]
+    env_info["llvm"] = commands.getstatusoutput('llvm-gcc --version | head -n 1')[1]
     xcode_version = commands.getstatusoutput('xcodebuild -version')[1]
     env_info["xcode"] = re.sub('\s+',' ',xcode_version)
     return env_info
