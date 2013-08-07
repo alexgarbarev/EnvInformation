@@ -15,10 +15,6 @@ def main(argv):
     shouldWrite = False
     shouldRevert = False
     path = sys.argv[len(sys.argv)-1]
-    if os.path.isfile(path) == False:
-        print "File",path,"is incorrect"
-        printUsage()
-        sys.exit(2)
     try:
         opts, args = getopt.getopt(argv, "-rwh:",["write","revert","help"])
     except getopt.GetoptError:
@@ -26,16 +22,24 @@ def main(argv):
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("-h", "--help"):
-            usage();
+            printUsage();
             sys.exit()
         elif opt in ("-w", "--write"):
             shouldWrite = True;
         elif opt in ("-r", "--revert"):
             shouldRevert = True
-    if shouldWrite: 
+    if os.path.isfile(path) == False:
+        print "File",path,"is incorrect"
+        printUsage()
+        sys.exit(2)
+    if shouldWrite:
         write(path)
-    if shouldRevert:
+    elif shouldRevert:
         revert(path)
+    else:
+        print "Mode is not selected"
+        printUsage()
+        sys.exit(2)
 
 def isGitAvailable():
     # Check for git
