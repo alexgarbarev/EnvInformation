@@ -6,19 +6,32 @@ import commands
 import re
 
 def printUsage():
-    print '''EnvInformation.py [mode] path
-    modes: -w --write,
-           -r --revert
-    path is path to Info.plist''' 
+    print '''
+    Usage: EnvInformation.py [mode] [-o|--output filepath]
+    modes: 
+           -w --write, writes enviroment information to plist
+           -r --revert, removes enviroment information from plist
+    output:
+           -o --outout, optional path to plist file. If not specified, Enviroment.plist will be used. 
+           If directory specified, then directory/Enviroment.plist will be used.
+    ''' 
+def printError(errorMessage):
+    print "Error: "+errorMessage
+    print "See --help or -h for help"
+    sys.exit(2)
+
+defaultPath = "Enviroment.plist"
+SourceControlKey = "SourceControl"
+EnviromentKey = "BuildEnviroment"
 
 def main(argv):
     shouldWrite = False
     shouldRevert = False
-    path = sys.argv[len(sys.argv)-1]
+    path = defaultPath
     try:
-        opts, args = getopt.getopt(argv, "-rwh:",["write","revert","help"])
+        opts, args = getopt.getopt(argv, "-rwh-o:",["write","revert","help","output"])
     except getopt.GetoptError:
-        printUsage()
+        printError("Can't parse parametrs")
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("-h", "--help"):
@@ -28,22 +41,20 @@ def main(argv):
             shouldWrite = True;
         elif opt in ("-r", "--revert"):
             shouldRevert = True
-    if os.path.isfile(path) == False:
-        print "File",path,"is incorrect"
-        printUsage()
-        sys.exit(2)
+        elif opt in ("-o", "--output"):
+            path = arg
+    path = fixPlistPath(path)
     if shouldWrite:
         write(path)
     elif shouldRevert:
         revert(path)
     else:
-        print "Mode is not selected"
-        printUsage()
-        sys.exit(2)
+        printError("Mode is not selected")
+
+
 
 def isGitAvailable():
-    # Check for git
-    return True
+    return len(commands.getstatusoutput('git rev-parse')[1]) == 0
     
 def getGitInfo():
     git_info = dict()
@@ -68,19 +79,40 @@ def getBuildInviroment():
     env_info["xcode"] = re.sub('\s+',' ',xcode_version)
     return env_info
 
-SourceControlKey = "SourceControl"
-EnviromentKey = "BuildEnviroment"
+def fixPlistPath(filePath):
+    slashSymbol = "/"
+    if filePath[len(filePath)-1] == "/":
+        slashSymbol = ""
+    if os.path.isdir(filePath):
+        filePath += slashSymbol + defaultPath
+    return filePath
+
+def plistFromPath(filePath):
+    try:
+        plist = plistlib.readPlist(filePath)
+    except IOError, e:
+        plist = dict()
+        plistlib.writePlist(plist, filePath)
+    return plist
+
 
 def write(filePath):
-    plist = plistlib.readPlist(filePath)
+    plist = plistFromPath(filePath)
     plist[SourceControlKey] = getSourceControlInfo()
     plist[EnviromentKey] = getBuildInviroment()
     plistlib.writePlist(plist, filePath)
     
 def revert(filePath):
-    plist = plistlib.readPlist(filePath)
-    del plist[SourceControlKey]
-    del plist[EnviromentKey] 
+    plist = plistFromPath(filePath)
+    try:
+        del plist[SourceControlKey]
+    except KeyError, e:
+        pass
+    try:
+        del plist[EnviromentKey]
+    except KeyError, e:
+        pass
+
     plistlib.writePlist(plist, filePath)
 
 if __name__ == "__main__":
